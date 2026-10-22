@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勇者Goseの小数計算RPG 〜セーブ機能付き〜</title>
+    <style>
+        body {
+            background-color: #222;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 40px 0;
+        }
+        .screen {
+            display: none;
+            width: 92%;
+            max-width: 500px;
+            height: 400px;
+            margin: 0 auto;
+            border: 4px solid white;
+            background-color: #111;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        .active { display: block; }
+        #title-screen { background-color: #111; padding-top: 50px; }
+        #name-input {
+            font-size: 24px; padding: 5px; width: 200px;
+            text-align: center; margin: 20px 0;
+            border: 2px solid white; background-color: #222;
+            color: white; border-radius: 5px;
+        }
+        #start-btn {
+            font-size: 24px; padding: 10px 30px;
+            background-color: #05f; color: white;
+            border: 2px solid white; border-radius: 5px;
+            cursor: pointer; font-weight: bold;
+        }
+        #start-btn:hover { background-color: #0cf; }
+        #map {
+            width: 100%; height: 250px; position: relative;
+            background-color: #3a3; transition: background 0.5s;
+        }
+        #player {
+            width: 30px; height: 30px; background-color: #05f;
+            color: white; font-weight: bold; line-height: 30px;
+            position: absolute; top: 110px; left: 30px;
+            border-radius: 5px; box-shadow: 0 0 8px #0cf;
+        }
+        #area-disp {
+            font-size: 22px; color: white; margin: 15px;
+            font-weight: bold; text-shadow: 2px 2px 4px #000;
+        }
+        #dpad {
+            position: absolute; right: 10px; bottom: 10px;
+            display: grid; grid-template-columns: repeat(3, 48px);
+            grid-template-rows: repeat(2, 48px); gap: 4px;
+            opacity: 0.85; z-index: 10;
+        }
+        .pad-btn {
+            font-size: 22px; font-weight: bold; color: white;
+            background-color: rgba(0, 85, 255, 0.75);
+            border: 2px solid white; border-radius: 8px;
+            cursor: pointer; touch-action: manipulation;
+            -webkit-user-select: none; user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .pad-btn:active { background-color: #0cf; }
+        .pad-up    { grid-column: 2; grid-row: 1; }
+        .pad-left  { grid-column: 1; grid-row: 2; }
+        .pad-down  { grid-column: 2; grid-row: 2; }
+        .pad-right { grid-column: 3; grid-row: 2; }
+        #battle-screen {
+            padding-top: 30px; background: #000; transition: background 0.5s;
+        }
+        .status-container {
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 0 10px; flex-wrap: wrap;
+        }
+        .status {
+            font-size: 20px; margin: 10px; text-shadow: 1px 1px 3px #000;
+        }
+        .boss-hp {
+            color: #ff3333; font-weight: bold; text-shadow: 0 0 8px #ff0000;
+        }
+        #battle-timer-disp {
+            font-size: 24px; color: #ff4500; font-weight: bold;
+            background-color: #222; padding: 5px 15px;
+            border: 2px solid #ff4500; border-radius: 5px;
+            box-shadow: 0 0 10px rgba(255,69,0,0.5);
+        }
+        #question {
+            font-size: 38px; margin: 25px; color: #ff0;
+            font-weight: bold; text-shadow: 2px 2px 5px #000;
+        }
+        #ans-input {
+            font-size: 26px; width: 140px; text-align: center;
+            border: 2px solid white; background-color: #222;
+            color: white; border-radius: 5px;
+        }
+        #attack-btn {
+            font-size: 24px; padding: 5px 20px; cursor: pointer;
+            background-color: #c00; color: white;
+            border: 2px solid white; border-radius: 5px;
+            font-weight: bold; margin-left: 10px; touch-action: manipulation;
+        }
+        #attack-btn:hover { background-color: #f00; }
+        #attack-btn:disabled { background-color: #555; color: #999; cursor: default; }
+        #log {
+            font-size: 18px; color: #f55; margin-top: 20px;
+            min-height: 30px; font-weight: bold;
+        }
+        #msg-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);
+            z-index: 100; justify-content: center; align-items: center;
+        }
+        #msg-overlay.show { display: flex; }
+        #msg-box {
+            background-color: #222; border: 3px solid white;
+            border-radius: 10px; padding: 25px; width: 85%; max-width: 420px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.9);
+        }
+        #msg-text { font-size: 18px; line-height: 1.6; white-space: pre-line; }
+        #msg-ok-btn {
+            margin-top: 15px; font-size: 20px; padding: 8px 30px;
+            background-color: #05f; color: white;
+            border: 2px solid white; border-radius: 5px;
+            cursor: pointer; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="title-screen" class="screen active">
+        <h1 style="color: #ff0; text-shadow: 2px 2px 4px #000; margin-top: 40px;">小数計算RPG</h1>
+        <p style="font-size: 18px; margin-top: 30px;">勇者の名前を入力してね！</p>
+        <input type="text" id="name-input" value="Gose" placeholder="名前をにゅうりょく"><br>
+        <button id="start-btn" onclick="gameStart()">ぼうけんをはじめる</button>
+    </div>
+
+    <div id="map-screen" class="screen">
+        <div id="area-disp">エリア 1: 算数草原</div>
+        <div id="welcome-msg" style="color: #ff5; font-size: 18px; font-weight: bold; margin-top: 10px;"></div>
+        <div style="color: #eee; font-size: 13px; margin-top: 10px;">【矢印キー or 画面のボタン】で移動して、ステージの右端を目指そう！</div>
+        <div id="map">
+            <div id="player">G</div>
+        </div>
+        <div id="dpad">
+            <button class="pad-btn pad-up" data-dir="up">↑</button>
+            <button class="pad-btn pad-left" data-dir="left">←</button>
+            <button class="pad-btn pad-down" data-dir="down">↓</button>
+            <button class="pad-btn pad-right" data-dir="right">→</button>
+        </div>
+    </div>
+
+    <div id="battle-screen" class="screen">
+        <div class="status-container">
+            <div class="status">👤 勇者<span id="p-name-disp">Gose</span> HP: <span id="p-hp">1000</span></div>
+            <div id="battle-timer-disp">⏱️ --:--</div>
+            <div id="enemy-status-box" class="status">👾 モブ敵 HP: <span id="e-hp">50</span></div>
+        </div>
+        <div id="question">1.2 + 2.3 = ?</div>
+        <div style="margin-top: 10px;">
+            <input type="number" id="ans-input" step="0.1" inputmode="decimal" placeholder="答え">
+            <button id="attack-btn" onclick="checkAnswer()">こうげき！</button>
+        </div>
+        <div id="log"></div>
+    </div>
+
+    <div id="msg-overlay">
+        <div id="msg-box">
+            <div id="msg-text"></div>
+            <button id="msg-ok-btn">OK</button>
+        </div>
+    </div>
+
+<script>
+    let playerName = "Gose";
+    let pHp = 1000;
+    let eHp = 50;
+    let area = 1;
+    let battleTimer = 60;
+    let timerInterval = null;
+    let num1 = 0, num2 = 0, correctAnswer = 0;
+    let isBattle = false;
+    let isGameRunning = false;
+
+    let pX = 30, pY = 110;
+    const player = document.getElementById("player");
+    const mapZone = document.getElementById("map");
+
+    const areaNames = ["", "算数草原", "ひき算洞窟", "大魔王デシマルの魔王城"];
+    const PAD = 15;
+
+    function loadSave() {
+        try { return localStorage.getItem("rpg_save_" + playerName); }
+        catch (e) { return null; }
+    }
+    function saveGame() {
+        try {
+            localStorage.setItem("rpg_save_" + playerName,
+                JSON.stringify({ area: area, pHp: pHp }));
+        } catch (e) {}
+    }
+    function clearSave() {
+        try { localStorage.removeItem("rpg_save_" + playerName); }
+        catch (e) {}
+    }
+
+    function gameAlert(message, onOk) {
+        document.getElementById("msg-text").innerText = message;
+        document.getElementById("msg-overlay").classList.add("show");
+        document.getElementById("msg-ok-btn").onclick = () => {
+            document.getElementById("msg-overlay").classList.remove("show");
+            if (onOk) onOk();
+        };
+    }
+
+    function gameStart() {
+        let inputName = document.getElementById("name-input").value;
+        if (inputName !== null && inputName.trim() !== "") {
+            playerName = inputName.trim();
+        }
+        let savedData = loadSave();
+        if (savedData) {
+            try {
+                let data = JSON.parse(savedData);
+                area = data.area;
+                pHp = data.pHp;
+                gameAlert(`おかえり！勇者 ${playerName}。\nエリア ${area} の途中から再開するよ！`);
+            } catch (e) {
+                area = 1; pHp = 1000;
+            }
+        } else {
+            area = 1; pHp = 1000;
+        }
+        document.getElementById("title-screen").classList.remove("active");
+        document.getElementById("map-screen").classList.add("active");
+        document.getElementById("p-name-disp").innerText = playerName;
+        document.getElementById("p-hp").innerText = pHp;
+        isGameRunning = true;
+        updateArea();
+    }
+
+    window.addEventListener("keydown", (e) => {
+        if (!isGameRunning || isBattle) return;
+        if (e.key === "ArrowRight") { pX += PAD; e.preventDefault(); }
+        else if (e.key === "ArrowLeft")  { pX -= PAD; e.preventDefault(); }
+        else if (e.key === "ArrowUp")    { pY -= PAD; e.preventDefault(); }
+        else if (e.key === "ArrowDown")  { pY += PAD; e.preventDefault(); }
+        else return;
+        applyMove();
+    });
+
+    document.querySelectorAll(".pad-btn").forEach((btn) => {
+        btn.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            if (!isGameRunning || isBattle) return;
+            if (btn.dataset.dir === "right") pX += PAD;
+            if (btn.dataset.dir === "left")  pX -= PAD;
+            if (btn.dataset.dir === "up")    pY -= PAD;
+            if (btn.dataset.dir === "down")  pY += PAD;
+            applyMove();
+        });
+    });
+
+    function applyMove() {
+        if (pX > mapZone.clientWidth - 40) {
+            pX = mapZone.clientWidth - 60;
+            startBattle();
+        }
+        if (pX < 0) pX = 0;
+        if (pY < 10) pY = 10;
+        if (pY > 210) pY = 210;
+        player.style.left = pX + "px";
+        player.style.top = pY + "px";
+    }
+
+    function updateArea() {
+        document.getElementById("area-disp").innerText = `エリア ${area}: ${areaNames[area]}`;
+        const msg = document.getElementById("welcome-msg");
+        if (area === 1) {
+            mapZone.style.background = "#3a3";
+            msg.innerText = `いくぞ、勇者 ${playerName} ！`;
+            msg.style.color = "#ff5";
+        } else if (area === 2) {
+            mapZone.style.background = "#545";
+            msg.innerText = `洞窟の奥から強い気配を感じる…！`;
+            msg.style.color = "#ff5";
+        } else if (area === 3) {
+            mapZone.style.background = "repeating-linear-gradient(45deg, #200, #200 10px, #100 10px, #100 20px)";
+            msg.innerText = `ついに来たか…大魔王デシマルの部屋だ！`;
+            msg.style.color = "#ff3333";
+        }
+        saveGame();
+    }
+
+    function startBattle() {
+        isBattle = true;
+        const battleScreen = document.getElementById("battle-screen");
+        const enemyBox = document.getElementById("enemy-status-box");
+        if (area === 3) {
+            eHp = 200;
+            battleTimer = 300;
+            battleScreen.style.background = "radial-gradient(circle, #400040, #100010)";
+            enemyBox.innerHTML = `😈 <span class="boss-hp">大魔王デシマル HP: <span id="e-hp">${eHp}</span></span>`;
+        } else {
+            eHp = 50;
+            battleTimer = 60;
+            battleScreen.style.background = "#000";
+            enemyBox.innerHTML = `👾 モブ敵 HP: <span id="e-hp">${eHp}</span>`;
+        }
+        document.getElementById("map-screen").classList.remove("active");
+        battleScreen.classList.add("active");
+        document.getElementById("log").innerText = area === 3
+            ? `クックック…よくぞここまで来たな、勇者${playerName}よ！`
+            : "モブ敵が飛び出してきた！";
+        updateBattleTimerDisplay();
+        makeQuestion();
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            battleTimer--;
+            updateBattleTimerDisplay();
+            if (battleTimer <= 0) {
+                clearInterval(timerInterval);
+                gameAlert(`⏱️ タイムオーバー！時間切れで ${playerName} は倒れてしまった…`, () => {
+                    clearSave();
+                    location.reload();
+                });
+            }
+        }, 1000);
+    }
+
+    function updateBattleTimerDisplay() {
+        let min = Math.floor(battleTimer / 60);
+        let sec = battleTimer % 60;
+        document.getElementById("battle-timer-disp").innerText =
+            `⏱️ ${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function makeQuestion() {
+        document.getElementById("ans-input").value = "";
+        document.getElementById("ans-input").focus();
+        document.getElementById("attack-btn").disabled = false;
+        let mode = "plus";
+        if (area === 2) mode = "minus";
+        if (area === 3) mode = Math.random() < 0.5 ? "plus" : "minus";
+        if (mode === "plus") {
+            num1 = Math.floor(Math.random() * 90 + 10) / 10;
+            num2 = Math.floor(Math.random() * 90 + 10) / 10;
+            correctAnswer = parseFloat((num1 + num2).toFixed(1));
+            document.getElementById("question").innerText = `${num1} ＋ ${num2} ＝ ？`;
+        } else {
+            num1 = Math.floor(Math.random() * 50 + 50) / 10;
+            num2 = Math.floor(Math.random() * 40 + 10) / 10;
+            correctAnswer = parseFloat((num1 - num2).toFixed(1));
+            document.getElementById("question").innerText = `${num1} － ${num2} ＝ ？`;
+        }
+    }
+
+    function checkAnswer() {
+        document.getElementById("attack-btn").disabled = true;
+        const userAns = parseFloat(document.getElementById("ans-input").value);
+        if (userAns === correctAnswer) {
+            eHp -= 10;
+            document.getElementById("e-hp").innerText = eHp;
+            document.getElementById("log").innerText = "正解！敵に10ダメージ！";
+            if (eHp <= 0) {
+                clearInterval(timerInterval);
+                if (area === 3) {
+                    document.getElementById("log").innerText = "大魔王デシマルを撃破！世界に平和を取り戻した！";
+                    clearSave();
+                    setTimeout(() => {
+                        gameAlert(`🎉🎉 完全クリア！！おめでとう、伝説の勇者 ${playerName}！🎉🎉`, () => {
+                            location.reload();
+                        });
+                    }, 2500);
+                } else {
+                    document.getElementById("log").innerText = "敵をたおした！次のエリアへ進もう！";
+                    setTimeout(endBattle, 1500);
+                }
+                return;
+            }
+        } else {
+            pHp -= 50;
+            document.getElementById("p-hp").innerText = pHp;
+            document.getElementById("log").innerText = `ちがうよ！(正解は${correctAnswer}) 50ダメージ受けた！`;
+            if (pHp <= 0) {
+                clearInterval(timerInterval);
+                gameAlert(`勇者 ${playerName} は倒れてしまった…ゲームオーバー`, () => {
+                    clearSave();
+                    location.reload();
+                });
+                return;
+            }
+        }
+        saveGame();
+        setTimeout(makeQuestion, 1000);
+    }
+
+    document.getElementById("ans-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (!document.getElementById("attack-btn").disabled) {
+                checkAnswer();
+            }
+        }
+    });
+
+    function endBattle() {
+        isBattle = false;
+        area++;
+        pX = 30;
+        player.style.left = pX + "px";
+        player.style.top = pY + "px";
+        updateArea();
+        document.getElementById("battle-screen").classList.remove("active");
+        document.getElementById("map-screen").classList.add("active");
+    }
+</script>
+</body>
+</html>
