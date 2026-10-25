@@ -2,424 +2,581 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勇者Goseの小数計算RPG 〜セーブ機能付き〜</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>勇者Goseの小数計算RPG（完全完成版）</title>
     <style>
         body {
             background-color: #222;
             color: white;
-            font-family: sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             text-align: center;
             margin: 0;
-            padding: 40px 0;
+            padding: 0;
+            font-size: 16px;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
+
+        .game-container {
+            width: 95%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
         .screen {
             display: none;
-            width: 92%;
-            max-width: 500px;
-            height: 400px;
-            margin: 0 auto;
-            border: 4px solid white;
+            width: 100%;
+            height: 360px;
+            border: 5px solid white;
             background-color: #111;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border-radius: 10px;
+            box-sizing: border-box;
         }
-        .active { display: block; }
-        #title-screen { background-color: #111; padding-top: 50px; }
-        #name-input {
-            font-size: 24px; padding: 5px; width: 200px;
-            text-align: center; margin: 20px 0;
-            border: 2px solid white; background-color: #222;
-            color: white; border-radius: 5px;
+
+        .active {
+            display: block;
         }
-        #start-btn {
-            font-size: 24px; padding: 10px 30px;
-            background-color: #05f; color: white;
-            border: 2px solid white; border-radius: 5px;
-            cursor: pointer; font-weight: bold;
+
+        #map-screen {
+            background-color: #3a3;
+            transition: background-color 0.5s;
         }
-        #start-btn:hover { background-color: #0cf; }
-        #map {
-            width: 100%; height: 250px; position: relative;
-            background-color: #3a3; transition: background 0.5s;
-        }
+
         #player {
-            width: 30px; height: 30px; background-color: #05f;
-            color: white; font-weight: bold; line-height: 30px;
-            position: absolute; top: 110px; left: 30px;
-            border-radius: 5px; box-shadow: 0 0 8px #0cf;
+            width: 30px;
+            height: 30px;
+            background-color: #05f;
+            color: white;
+            font-weight: bold;
+            line-height: 30px;
+            position: absolute;
+            top: 150px;
+            left: 30px;
+            border-radius: 6px;
+            z-index: 10;
+            text-align: center;
+            font-size: 18px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            transition: left 0.1s, top 0.1s;
         }
-        #area-disp {
-            font-size: 22px; color: white; margin: 15px;
-            font-weight: bold; text-shadow: 2px 2px 4px #000;
+
+        #timer-disp, #area-disp {
+            font-size: 18px;
+            color: white;
+            margin: 8px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
         }
-        #dpad {
-            position: absolute; right: 10px; bottom: 10px;
-            display: grid; grid-template-columns: repeat(3, 48px);
-            grid-template-rows: repeat(2, 48px); gap: 4px;
-            opacity: 0.85; z-index: 10;
+        #timer-disp.hurry {
+            color: #ff3333;
+            animation: blink 0.5s infinite alternate;
         }
-        .pad-btn {
-            font-size: 22px; font-weight: bold; color: white;
-            background-color: rgba(0, 85, 255, 0.75);
-            border: 2px solid white; border-radius: 8px;
-            cursor: pointer; touch-action: manipulation;
-            -webkit-user-select: none; user-select: none;
-            -webkit-touch-callout: none;
+        @keyframes blink {
+            0% { opacity: 1; }
+            100% { opacity: 0.5; }
         }
-        .pad-btn:active { background-color: #0cf; }
-        .pad-up    { grid-column: 2; grid-row: 1; }
-        .pad-left  { grid-column: 1; grid-row: 2; }
-        .pad-down  { grid-column: 2; grid-row: 2; }
-        .pad-right { grid-column: 3; grid-row: 2; }
+
+        .obstacle {
+            position: absolute;
+            font-size: 26px;
+            line-height: 30px;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 1;
+            text-align: center;
+        }
+
         #battle-screen {
-            padding-top: 30px; background: #000; transition: background 0.5s;
+            background-color: #000;
+            padding-top: 15px;
+            box-sizing: border-box;
         }
-        .status-container {
-            display: flex; justify-content: space-around; align-items: center;
-            padding: 0 10px; flex-wrap: wrap;
-        }
+
         .status {
-            font-size: 20px; margin: 10px; text-shadow: 1px 1px 3px #000;
+            font-size: 18px;
+            margin: 4px;
+            font-weight: bold;
         }
-        .boss-hp {
-            color: #ff3333; font-weight: bold; text-shadow: 0 0 8px #ff0000;
+        #player-status {
+            color: #0cf;
         }
-        #battle-timer-disp {
-            font-size: 24px; color: #ff4500; font-weight: bold;
-            background-color: #222; padding: 5px 15px;
-            border: 2px solid #ff4500; border-radius: 5px;
-            box-shadow: 0 0 10px rgba(255,69,0,0.5);
+        #monster-status {
+            color: #f55;
+            margin-bottom: 10px;
         }
         #question {
-            font-size: 38px; margin: 25px; color: #ff0;
-            font-weight: bold; text-shadow: 2px 2px 5px #000;
+            font-size: 38px;
+            margin: 15px 0;
+            color: #ff0;
+            font-weight: bold;
         }
         #ans-input {
-            font-size: 26px; width: 140px; text-align: center;
-            border: 2px solid white; background-color: #222;
-            color: white; border-radius: 5px;
+            font-size: 24px;
+            width: 120px;
+            text-align: center;
+            padding: 5px;
+            border-radius: 5px;
+            border: 2px solid #fff;
+            background: #fff;
+            color: #000;
         }
         #attack-btn {
-            font-size: 24px; padding: 5px 20px; cursor: pointer;
-            background-color: #c00; color: white;
-            border: 2px solid white; border-radius: 5px;
-            font-weight: bold; margin-left: 10px; touch-action: manipulation;
+            font-size: 22px;
+            padding: 5px 15px;
+            cursor: pointer;
+            background-color: #f00;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 10px;
+            font-weight: bold;
         }
-        #attack-btn:hover { background-color: #f00; }
-        #attack-btn:disabled { background-color: #555; color: #999; cursor: default; }
-        #log {
-            font-size: 18px; color: #f55; margin-top: 20px;
-            min-height: 30px; font-weight: bold;
+        #attack-btn:active {
+            background-color: #b00;
         }
-        #msg-overlay {
-            display: none; position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);
-            z-index: 100; justify-content: center; align-items: center;
+
+        /* コントローラー */
+        .controls {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(2, 60px);
+            gap: 10px;
+            justify-content: center;
         }
-        #msg-overlay.show { display: flex; }
-        #msg-box {
-            background-color: #222; border: 3px solid white;
-            border-radius: 10px; padding: 25px; width: 85%; max-width: 420px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.9);
+        .btn {
+            background-color: #444;
+            color: white;
+            border: 2px solid white;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #222;
         }
-        #msg-text { font-size: 18px; line-height: 1.6; white-space: pre-line; }
-        #msg-ok-btn {
-            margin-top: 15px; font-size: 20px; padding: 8px 30px;
-            background-color: #05f; color: white;
-            border: 2px solid white; border-radius: 5px;
-            cursor: pointer; font-weight: bold;
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        .up { grid-column: 2; grid-row: 1; }
+        .left { grid-column: 1; grid-row: 2; }
+        .down { grid-column: 2; grid-row: 2; }
+        .right { grid-column: 3; grid-row: 2; }
+
+        #msg {
+            font-size: 20px;
+            margin-top: 15px;
+            min-height: 30px;
+            font-weight: bold;
+            color: #ff4500;
+        }
+
+        /* カスタムお知らせウィンドウ */
+        #custom-alert {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 320px;
+            background-color: #333;
+            border: 4px solid #fff;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        #alert-msg {
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            line-height: 1.4;
+        }
+        #alert-btn {
+            font-size: 18px;
+            padding: 8px 24px;
+            background-color: #05f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #alert-btn:active {
+            background-color: #03a;
         }
     </style>
 </head>
 <body>
-    <div id="title-screen" class="screen active">
-        <h1 style="color: #ff0; text-shadow: 2px 2px 4px #000; margin-top: 40px;">小数計算RPG</h1>
-        <p style="font-size: 18px; margin-top: 30px;">勇者の名前を入力してね！</p>
-        <input type="text" id="name-input" value="Gose" placeholder="名前をにゅうりょく"><br>
-        <button id="start-btn" onclick="gameStart()">ぼうけんをはじめる</button>
+
+<div id="area-disp">エリア 1: 小数のたし算・ひき算</div>
+<div id="timer-disp">バトル残り時間: --分--秒</div>
+
+<div class="game-container">
+    <!-- マップ画面 -->
+    <div id="map-screen" class="screen active">
+        <div id="player">勇</div>
     </div>
 
-    <div id="map-screen" class="screen">
-        <div id="area-disp">エリア 1: 算数草原</div>
-        <div id="welcome-msg" style="color: #ff5; font-size: 18px; font-weight: bold; margin-top: 10px;"></div>
-        <div style="color: #eee; font-size: 13px; margin-top: 10px;">【矢印キー or 画面のボタン】で移動して、ステージの右端を目指そう！</div>
-        <div id="map">
-            <div id="player">G</div>
-        </div>
-        <div id="dpad">
-            <button class="pad-btn pad-up" data-dir="up">↑</button>
-            <button class="pad-btn pad-left" data-dir="left">←</button>
-            <button class="pad-btn pad-down" data-dir="down">↓</button>
-            <button class="pad-btn pad-right" data-dir="right">→</button>
-        </div>
-    </div>
-
+    <!-- 戦闘画面 -->
     <div id="battle-screen" class="screen">
-        <div class="status-container">
-            <div class="status">👤 勇者<span id="p-name-disp">Gose</span> HP: <span id="p-hp">1000</span></div>
-            <div id="battle-timer-disp">⏱️ --:--</div>
-            <div id="enemy-status-box" class="status">👾 モブ敵 HP: <span id="e-hp">50</span></div>
-        </div>
-        <div id="question">1.2 + 2.3 = ?</div>
-        <div style="margin-top: 10px;">
-            <input type="number" id="ans-input" step="0.1" inputmode="decimal" placeholder="答え">
-            <button id="attack-btn" onclick="checkAnswer()">こうげき！</button>
-        </div>
-        <div id="log"></div>
+        <div class="status" id="player-status">勇者Goseの HP: <span id="player-hp">500</span></div>
+        <div class="status" id="monster-status"><span id="monster-name">モンスター</span>の HP: <span id="monster-hp">50</span></div>
+        <div id="question">1.2 + 0.5 = ?</div>
+        <input type="number" id="ans-input" step="any" pattern="[0-9.]*" inputmode="decimal" placeholder="答え">
+        <button id="attack-btn">攻撃</button>
     </div>
 
-    <div id="msg-overlay">
-        <div id="msg-box">
-            <div id="msg-text"></div>
-            <button id="msg-ok-btn">OK</button>
-        </div>
+    <!-- カスタムお知らせウィンドウ -->
+    <div id="custom-alert">
+        <div id="alert-msg">メッセージ</div>
+        <button id="alert-btn" onclick="closeAlert()">OK</button>
     </div>
+
+    <!-- 操作用コントローラー -->
+    <div class="controls" id="move-controls">
+        <div class="btn up" id="btn-up">▲</div>
+        <div class="btn left" id="btn-left">◀</div>
+        <div class="btn down" id="btn-down">▼</div>
+        <div class="btn right" id="btn-right">▶</div>
+    </div>
+</div>
+
+<div id="msg">すべての敵をたおして右端のゴールを目指せ！</div>
 
 <script>
-    let playerName = "Gose";
-    let pHp = 1000;
-    let eHp = 50;
-    let area = 1;
-    let battleTimer = 60;
-    let timerInterval = null;
-    let num1 = 0, num2 = 0, correctAnswer = 0;
-    let isBattle = false;
-    let isGameRunning = false;
+    // ゲーム状態管理オブジェクト
+    const GAME = {
+        state: 'map', 
+        area: 1,
+        timeLeft: 180, // バトルごとの制限時間3分（180秒）
+        player: { x: 30, y: 150, hp: 500 }, 
+        monster: { name: "モンスター", hp: 50, currentAns: 0 }, 
+        timerId: null,
+        enemies: [],
+        screenWidth: 0,
+        screenHeight: 360,
+        gridSize: 30,
+        alertCallback: null
+    };
 
-    let pX = 30, pY = 110;
-    const player = document.getElementById("player");
-    const mapZone = document.getElementById("map");
+    // DOM要素キャッシュ
+    const elMapScreen = document.getElementById('map-screen');
+    const elBattleScreen = document.getElementById('battle-screen');
+    const elPlayer = document.getElementById('player');
+    const elTimer = document.getElementById('timer-disp');
+    const elArea = document.getElementById('area-disp');
+    const elPlayerHp = document.getElementById('player-hp');
+    const elMonsterName = document.getElementById('monster-name');
+    const elMonsterHp = document.getElementById('monster-hp');
+    const elQuestion = document.getElementById('question');
+    const elAnsInput = document.getElementById('ans-input');
+    const elControls = document.getElementById('move-controls');
+    const elMsg = document.getElementById('msg');
+    const elAlert = document.getElementById('custom-alert');
+    const elAlertMsg = document.getElementById('alert-msg');
 
-    const areaNames = ["", "算数草原", "ひき算洞窟", "大魔王デシマルの魔王城"];
-    const PAD = 15;
+    // 各ステージの設定
+    const AREA_CONFIG = {
+        1: { name: "エリア 1: 小数のたし算・ひき算", bg: "#3a3", enemy: "🌲", monsterName: "コダマ" },
+        2: { name: "エリア 2: 小数×整数・小数÷整数", bg: "#d83", enemy: "⛰️", monsterName: "ゴーレム" },
+        3: { name: "エリア 3: 小数×小数・小数÷小数", bg: "#a3a", enemy: "🔥", monsterName: "大魔王ハデス" }
+    };
 
-    function loadSave() {
-        try { return localStorage.getItem("rpg_save_" + playerName); }
-        catch (e) { return null; }
+    function updateScreenSize() {
+        GAME.screenWidth = elMapScreen.clientWidth;
     }
-    function saveGame() {
-        try {
-            localStorage.setItem("rpg_save_" + playerName,
-                JSON.stringify({ area: area, pHp: pHp }));
-        } catch (e) {}
-    }
-    function clearSave() {
-        try { localStorage.removeItem("rpg_save_" + playerName); }
-        catch (e) {}
-    }
 
-    function gameAlert(message, onOk) {
-        document.getElementById("msg-text").innerText = message;
-        document.getElementById("msg-overlay").classList.add("show");
-        document.getElementById("msg-ok-btn").onclick = () => {
-            document.getElementById("msg-overlay").classList.remove("show");
-            if (onOk) onOk();
-        };
-    }
-
-    function gameStart() {
-        let inputName = document.getElementById("name-input").value;
-        if (inputName !== null && inputName.trim() !== "") {
-            playerName = inputName.trim();
+    // タイマー表示の更新
+    function formatTimeDisplay() {
+        if (GAME.state !== 'battle') {
+            elTimer.textContent = "次のバトルに備えよ！";
+            elTimer.classList.remove('hurry');
+            return;
         }
-        let savedData = loadSave();
-        if (savedData) {
-            try {
-                let data = JSON.parse(savedData);
-                area = data.area;
-                pHp = data.pHp;
-                gameAlert(`おかえり！勇者 ${playerName}。\nエリア ${area} の途中から再開するよ！`);
-            } catch (e) {
-                area = 1; pHp = 1000;
-            }
+        const minutes = Math.floor(GAME.timeLeft / 60);
+        const seconds = GAME.timeLeft % 60;
+        elTimer.textContent = `バトル残り時間: ${minutes}分${seconds.toString().padStart(2, '0')}秒`;
+        
+        if (GAME.timeLeft <= 30) {
+            elTimer.classList.add('hurry');
         } else {
-            area = 1; pHp = 1000;
-        }
-        document.getElementById("title-screen").classList.remove("active");
-        document.getElementById("map-screen").classList.add("active");
-        document.getElementById("p-name-disp").innerText = playerName;
-        document.getElementById("p-hp").innerText = pHp;
-        isGameRunning = true;
-        updateArea();
-    }
-
-    window.addEventListener("keydown", (e) => {
-        if (!isGameRunning || isBattle) return;
-        if (e.key === "ArrowRight") { pX += PAD; e.preventDefault(); }
-        else if (e.key === "ArrowLeft")  { pX -= PAD; e.preventDefault(); }
-        else if (e.key === "ArrowUp")    { pY -= PAD; e.preventDefault(); }
-        else if (e.key === "ArrowDown")  { pY += PAD; e.preventDefault(); }
-        else return;
-        applyMove();
-    });
-
-    document.querySelectorAll(".pad-btn").forEach((btn) => {
-        btn.addEventListener("pointerdown", (e) => {
-            e.preventDefault();
-            if (!isGameRunning || isBattle) return;
-            if (btn.dataset.dir === "right") pX += PAD;
-            if (btn.dataset.dir === "left")  pX -= PAD;
-            if (btn.dataset.dir === "up")    pY -= PAD;
-            if (btn.dataset.dir === "down")  pY += PAD;
-            applyMove();
-        });
-    });
-
-    function applyMove() {
-        if (pX > mapZone.clientWidth - 40) {
-            pX = mapZone.clientWidth - 60;
-            startBattle();
-        }
-        if (pX < 0) pX = 0;
-        if (pY < 10) pY = 10;
-        if (pY > 210) pY = 210;
-        player.style.left = pX + "px";
-        player.style.top = pY + "px";
-    }
-
-    function updateArea() {
-        document.getElementById("area-disp").innerText = `エリア ${area}: ${areaNames[area]}`;
-        const msg = document.getElementById("welcome-msg");
-        if (area === 1) {
-            mapZone.style.background = "#3a3";
-            msg.innerText = `いくぞ、勇者 ${playerName} ！`;
-            msg.style.color = "#ff5";
-        } else if (area === 2) {
-            mapZone.style.background = "#545";
-            msg.innerText = `洞窟の奥から強い気配を感じる…！`;
-            msg.style.color = "#ff5";
-        } else if (area === 3) {
-            mapZone.style.background = "repeating-linear-gradient(45deg, #200, #200 10px, #100 10px, #100 20px)";
-            msg.innerText = `ついに来たか…大魔王デシマルの部屋だ！`;
-            msg.style.color = "#ff3333";
-        }
-        saveGame();
-    }
-
-    function startBattle() {
-        isBattle = true;
-        const battleScreen = document.getElementById("battle-screen");
-        const enemyBox = document.getElementById("enemy-status-box");
-        if (area === 3) {
-            eHp = 200;
-            battleTimer = 300;
-            battleScreen.style.background = "radial-gradient(circle, #400040, #100010)";
-            enemyBox.innerHTML = `😈 <span class="boss-hp">大魔王デシマル HP: <span id="e-hp">${eHp}</span></span>`;
-        } else {
-            eHp = 50;
-            battleTimer = 60;
-            battleScreen.style.background = "#000";
-            enemyBox.innerHTML = `👾 モブ敵 HP: <span id="e-hp">${eHp}</span>`;
-        }
-        document.getElementById("map-screen").classList.remove("active");
-        battleScreen.classList.add("active");
-        document.getElementById("log").innerText = area === 3
-            ? `クックック…よくぞここまで来たな、勇者${playerName}よ！`
-            : "モブ敵が飛び出してきた！";
-        updateBattleTimerDisplay();
-        makeQuestion();
-        clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            battleTimer--;
-            updateBattleTimerDisplay();
-            if (battleTimer <= 0) {
-                clearInterval(timerInterval);
-                gameAlert(`⏱️ タイムオーバー！時間切れで ${playerName} は倒れてしまった…`, () => {
-                    clearSave();
-                    location.reload();
-                });
-            }
-        }, 1000);
-    }
-
-    function updateBattleTimerDisplay() {
-        let min = Math.floor(battleTimer / 60);
-        let sec = battleTimer % 60;
-        document.getElementById("battle-timer-disp").innerText =
-            `⏱️ ${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-    }
-
-    function makeQuestion() {
-        document.getElementById("ans-input").value = "";
-        document.getElementById("ans-input").focus();
-        document.getElementById("attack-btn").disabled = false;
-        let mode = "plus";
-        if (area === 2) mode = "minus";
-        if (area === 3) mode = Math.random() < 0.5 ? "plus" : "minus";
-        if (mode === "plus") {
-            num1 = Math.floor(Math.random() * 90 + 10) / 10;
-            num2 = Math.floor(Math.random() * 90 + 10) / 10;
-            correctAnswer = parseFloat((num1 + num2).toFixed(1));
-            document.getElementById("question").innerText = `${num1} ＋ ${num2} ＝ ？`;
-        } else {
-            num1 = Math.floor(Math.random() * 50 + 50) / 10;
-            num2 = Math.floor(Math.random() * 40 + 10) / 10;
-            correctAnswer = parseFloat((num1 - num2).toFixed(1));
-            document.getElementById("question").innerText = `${num1} － ${num2} ＝ ？`;
+            elTimer.classList.remove('hurry');
         }
     }
 
-    function checkAnswer() {
-        document.getElementById("attack-btn").disabled = true;
-        const userAns = parseFloat(document.getElementById("ans-input").value);
-        if (userAns === correctAnswer) {
-            eHp -= 10;
-            document.getElementById("e-hp").innerText = eHp;
-            document.getElementById("log").innerText = "正解！敵に10ダメージ！";
-            if (eHp <= 0) {
-                clearInterval(timerInterval);
-                if (area === 3) {
-                    document.getElementById("log").innerText = "大魔王デシマルを撃破！世界に平和を取り戻した！";
-                    clearSave();
-                    setTimeout(() => {
-                        gameAlert(`🎉🎉 完全クリア！！おめでとう、伝説の勇者 ${playerName}！🎉🎉`, () => {
-                            location.reload();
-                        });
-                    }, 2500);
-                } else {
-                    document.getElementById("log").innerText = "敵をたおした！次のエリアへ進もう！";
-                    setTimeout(endBattle, 1500);
-                }
-                return;
-            }
-        } else {
-            pHp -= 50;
-            document.getElementById("p-hp").innerText = pHp;
-            document.getElementById("log").innerText = `ちがうよ！(正解は${correctAnswer}) 50ダメージ受けた！`;
-            if (pHp <= 0) {
-                clearInterval(timerInterval);
-                gameAlert(`勇者 ${playerName} は倒れてしまった…ゲームオーバー`, () => {
-                    clearSave();
-                    location.reload();
-                });
-                return;
-            }
-        }
-        saveGame();
-        setTimeout(makeQuestion, 1000);
-    }
-
-    document.getElementById("ans-input").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            if (!document.getElementById("attack-btn").disabled) {
-                checkAnswer();
-            }
-        }
-    });
-
-    function endBattle() {
-        isBattle = false;
-        area++;
-        pX = 30;
-        player.style.left = pX + "px";
-        player.style.top = pY + "px";
-        updateArea();
-        document.getElementById("battle-screen").classList.remove("active");
-        document.getElementById("map-screen").classList.add("active");
-    }
+    // ゲーム全体のリセット
+    function resetGame() {
+        GAME.state = 'map';
+        GAME.area = 1;
+        GAME.player.hp = 500; 
+        formatTimeDisplay();
+        elPlayerHp.textContent = GAME.player.hp;
+elMsg.textContent = "すべての敵をたおして右端のゴールを目指せ！";
+elAnsInput.value = "";
+        
+ elBattleScreen.classList.remove('active');
+elMapScreen.classList.add('active')
+elControls.style.display = 'grid';
+initMap();
+// 1秒ごとの監視タイマーを始動（バトル中のみカウントダウン）
+clearInterval(GAME.timerId);
+GAME.timerId = setInterval(() => {
+if (GAME.state === 'battle') {
+GAME.timeLeft--;
+formatTimeDisplay();
+if (GAME.timeLeft <= 0) {
+clearInterval(GAME.timerId);
+GAME.state = 'gameover';
+showAlert(⏰ タイムアップ！<br>3分以内にモンスターを倒せませんでした..., () => {
+resetGame();
+});
+}
+}
+}, 1000);
+}
+function showAlert(text, callback) {
+elAlertMsg.innerHTML = text;
+elAlert.style.display = 'block';
+GAME.alertCallback = callback;
+}
+function closeAlert() {
+elAlert.style.display = 'none';
+if (GAME.alertCallback) {
+GAME.alertCallback();
+GAME.alertCallback = null;
+}
+}
+// マップ構築
+function initMap() {
+updateScreenSize();
+document.querySelectorAll('.obstacle').forEach(e => e.remove());
+GAME.enemies = [];
+elArea.textContent = AREA_CONFIG[GAME.area].name;
+elMapScreen.style.backgroundColor = AREA_CONFIG[GAME.area].bg;
+GAME.player.x = GAME.gridSize;
+GAME.player.y = 150;
+updatePlayerPosition();
+const emoji = AREA_CONFIG[GAME.area].enemy;
+const maxGridX = Math.floor((GAME.screenWidth - GAME.gridSize * 2) / GAME.gridSize);
+for (let i = 0; i < 3; i++) {
+const segmentWidth = Math.floor(maxGridX / 3);
+const gridX = 2 + (i * segmentWidth) + Math.floor(Math.random() * (segmentWidth - 1));
+const gridY = 1 + Math.floor(Math.random() * 9);
+const enemyX = gridX * GAME.gridSize;
+const enemyY = gridY * GAME.gridSize;
+const div = document.createElement('div');
+div.className = 'obstacle';
+div.style.left = enemyX + 'px';
+div.style.top = enemyY + 'px';
+div.textContent = emoji;
+elMapScreen.appendChild(div);
+GAME.enemies.push({ x: enemyX, y: enemyY, element: div });
+}
+}
+function updatePlayerPosition() {
+elPlayer.style.left = GAME.player.x + 'px';
+elPlayer.style.top = GAME.player.y + 'px';
+}
+// プレイヤー移動
+function movePlayer(dx, dy) {
+if (GAME.state !== 'map') return;
+let nextX = GAME.player.x + dx;
+let nextY = GAME.player.y + dy;
+if (nextX < 0 || nextX > (GAME.screenWidth - GAME.gridSize) || nextY < 0 || nextY > (GAME.screenHeight - GAME.gridSize)) {
+return;
+}
+GAME.player.x = nextX;
+GAME.player.y = nextY;
+updatePlayerPosition();
+const hitEnemyIndex = GAME.enemies.findIndex(e => e.x === GAME.player.x && e.y === GAME.player.y);
+if (hitEnemyIndex !== -1) {
+startBattle(hitEnemyIndex);
+return;
+}
+if (GAME.player.x >= (GAME.screenWidth - GAME.gridSize * 2)) {
+if (GAME.enemies.length > 0) {
+elMsg.textContent = "⚠️ まず敵をたおそう！";
+GAME.player.x -= dx;
+updatePlayerPosition();
+return;
+}
+if (GAME.area < 3) {
+GAME.area++;
+showAlert(エリア ${GAME.area} （次のエリア）へ進む！, () => {
+initMap();
+elMsg.textContent = "すべての敵をたおして右端のゴールを目指せ！";
+});
+} else {
+clearInterval(GAME.timerId);
+GAME.state = 'clear';
+showAlert(🎉 ゲームクリア！<br>大魔王ハデスを討伐した！, () => {
+resetGame();
+});
+}
+}
+}
+// バトル開始
+function startBattle(enemyIndex) {
+GAME.state = 'battle';
+GAME.activeEnemyIndex = enemyIndex;
+GAME.monster.name = AREA_CONFIG[GAME.area].monsterName;
+GAME.timeLeft = 180; // バトル開始時にタイマーを3分（180秒）にリセット
+if (GAME.area === 3) {
+GAME.monster.hp = 100; // 大魔王ハデスのHPは100
+} else {
+GAME.monster.hp = 50;  // 通常モブのHPは50
+}
+formatTimeDisplay();
+elPlayerHp.textContent = GAME.player.hp;
+elMonsterName.textContent = GAME.monster.name;
+elMapScreen.classList.remove('active');
+elBattleScreen.classList.add('active');
+elMsg.textContent = "制限時間は3分！計算を解いてダメージを与えろ！";
+makeQuestion();
+}
+// 問題生成
+function makeQuestion() {
+elMonsterHp.textContent = GAME.monster.hp;
+elPlayerHp.textContent = GAME.player.hp;
+elAnsInput.value = "";
+elAnsInput.focus();
+let qText = "";
+let ans = 0;
+if (GAME.area === 1) {
+let a = (Math.floor(Math.random() * 9) + 1) / 10;
+let b = (Math.floor(Math.random() * 9) + 1) / 10;
+if (Math.random() > 0.5) {
+qText = ${a} + ${b};
+ans = a + b;
+} else {
+if (a < b) { const t = a; a = b; b = t; }
+qText = ${a} - ${b};
+ans = a - b;
+}
+} else if (GAME.area === 2) {
+if (Math.random() > 0.5) {
+let a = (Math.floor(Math.random() * 9) + 1) / 10;
+let b = Math.floor(Math.random() * 5) + 2;
+qText = ${a} × ${b};
+ans = a * b;
+} else {
+let b = Math.floor(Math.random() * 4) + 2;
+let ansInt = (Math.floor(Math.random() * 5) + 1) / 10;
+let a = parseFloat((ansInt * b).toFixed(1));
+qText = ${a} ÷ ${b};
+ans = ansInt;
+}
+} else {
+if (Math.random() > 0.5) {
+let a = (Math.floor(Math.random() * 9) + 1) / 10;
+let b = (Math.floor(Math.random() * 9) + 1) / 10;
+qText = ${a} × ${b};
+ans = a * b;
+} else {
+let b = Math.floor(Math.random() * 5) + 2;
+let ansInt = (Math.floor(Math.random() * 5) + 2) / 10;
+let a = parseFloat((ansInt * b).toFixed(2));
+qText = ${a} ÷ ${b};
+ans = ansInt;
+}
+}
+GAME.monster.currentAns = parseFloat(ans.toFixed(2));
+elQuestion.textContent = qText + " = ?";
+}
+// 答え合わせ
+document.getElementById('attack-btn').onclick = function() {
+if (GAME.state !== 'battle') return;
+const userAns = parseFloat(elAnsInput.value);
+if (isNaN(userAns)) return;
+if (Math.abs(userAns - GAME.monster.currentAns) < 0.001) {
+GAME.monster.hp -= 10;
+elMsg.textContent = "⭕ 正解！10ダメージを与えた！";
+if (GAME.monster.hp <= 0) {
+elMsg.textContent = ${GAME.monster.name}を倒した！;
+const enemy = GAME.enemies[GAME.activeEnemyIndex];
+if (enemy && enemy.element) {
+enemy.element.remove();
+}
+GAME.enemies.splice(GAME.activeEnemyIndex, 1);
+setTimeout(() => {
+GAME.state = 'map';
+formatTimeDisplay(); // タイマー表示のテキスト変更
+elBattleScreen.classList.remove('active');
+elMapScreen.classList.add('active');
+elMsg.textContent = "すべての敵をたおして右端のゴールを目指せ！";
+}, 1000);
+} else {
+setTimeout(makeQuestion, 800);
+}
+} else {
+GAME.player.hp -= 10;
+elMsg.textContent = ❌ ちがうよ！ (正解:${GAME.monster.currentAns}) 10ダメージを受けた！;
+if (GAME.player.hp <= 0) {
+clearInterval(GAME.timerId);
+GAME.state = 'gameover';
+showAlert(💀 体力がなくなってしまった！<br>ゲームオーバー..., () => {
+resetGame();
+});
+} else {
+setTimeout(makeQuestion, 2000);
+}
+}
+};
+// コントローラーのタッチ・クリックイベント処理関数
+const attachButtonEvent = (id, dx, dy) => {
+const btn = document.getElementById(id);
+if (!btn) return;
+const triggerAction = (e) => {
+e.preventDefault();
+movePlayer(dx, dy);
+};
+btn.addEventListener('mousedown', triggerAction);
+btn.addEventListener('touchstart', triggerAction, { passive: false });
+};
+// 各移動キーの設定登録
+attachButtonEvent('btn-up', 0, -GAME.gridSize);
+attachButtonEvent('btn-left', -GAME.gridSize, 0);
+attachButtonEvent('btn-down', 0, GAME.gridSize);
+attachButtonEvent('btn-right', GAME.gridSize, 0);
+// PCキースクロールガード & 移動登録
+window.addEventListener('keydown', function(e) {
+if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].indexOf(e.key) > -1) {
+e.preventDefault();
+}
+if (GAME.state === 'map') {
+if (e.key === 'ArrowUp') movePlayer(0, -GAME.gridSize);
+if (e.key === 'ArrowLeft') movePlayer(-GAME.gridSize, 0);
+if (e.key === 'ArrowDown') movePlayer(0, GAME.gridSize);
+if (e.key === 'ArrowRight') movePlayer(GAME.gridSize, 0);
+}
+}, {passive: false});
+elAnsInput.addEventListener('keypress', function(e) {
+if (e.key === 'Enter') {
+document.getElementById('attack-btn').click();
+}
+});
+window.addEventListener('resize', updateScreenSize);
+// 初回スタート起動
+resetGame();
 </script>
 </body>
 </html>
